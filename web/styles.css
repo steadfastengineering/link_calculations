@@ -1,0 +1,215 @@
+:root {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #000000;
+  --ink: #39ff14;
+  --muted: #1f9a32;
+  --line: #14661f;
+  --accent: #39ff14;
+  --accent-ink: #000000;
+  --plot: #000000;
+  --glow: 0 0 6px rgba(57, 255, 20, 0.35);
+  font-family: "Cascadia Mono", "Cascadia Code", "Consolas", "Liberation Mono", "DejaVu Sans Mono", "Courier New", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #000000;
+  color: var(--ink);
+  text-shadow: var(--glow);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: #000000;
+}
+
+.app-header {
+  padding: 0.85rem 1.25rem 0.35rem;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app-header h1::before {
+  content: "> ";
+  color: var(--muted);
+}
+
+.tablist {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  overflow-x: auto;
+}
+
+.tab {
+  appearance: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: #000000;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+  padding: 0.7rem 1rem;
+  border-radius: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  text-shadow: none;
+}
+
+.tab[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  font-weight: 650;
+  text-shadow: none;
+}
+
+.tab:focus-visible,
+.inputs input:focus-visible,
+.inputs button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.panels {
+  flex: 1;
+  min-height: 0;
+  background: #000000;
+}
+
+.panel {
+  height: 100%;
+  padding: 1rem;
+}
+
+.split {
+  display: flex;
+  gap: 1rem;
+  height: 100%;
+  min-height: 28rem;
+}
+
+.inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: min(100%, 22rem);
+  flex: 0 0 22rem;
+}
+
+.inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.inputs input,
+.inputs button,
+.results,
+.plot,
+.empty {
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #000000;
+  color: var(--ink);
+}
+
+.inputs input,
+.inputs button {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+}
+
+.inputs input {
+  text-transform: none;
+  letter-spacing: 0;
+  caret-color: var(--accent);
+}
+
+.inputs input::placeholder {
+  color: var(--muted);
+}
+
+.inputs button {
+  align-self: flex-start;
+  background: #000000;
+  color: var(--accent);
+  border-color: var(--accent);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: var(--glow);
+}
+
+.inputs button:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  text-shadow: none;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.results,
+.empty {
+  padding: 0.9rem 1rem;
+  color: var(--muted);
+  background: #000000;
+}
+
+.results {
+  flex: 1;
+  min-height: 8rem;
+}
+
+.plot,
+.empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-height: 16rem;
+  background: #000000;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.plot {
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+@media (max-width: 700px) {
+  .split {
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .inputs {
+    width: auto;
+    flex-basis: auto;
+  }
+}

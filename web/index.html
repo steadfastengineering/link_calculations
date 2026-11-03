@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Link Design</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>Link Design</h1>
+    </header>
+
+    <div class="tablist" role="tablist" aria-label="Design sections">
+      <button class="tab" id="tab-link-force" role="tab" aria-selected="true" aria-controls="panel-link-force" type="button">Link Force</button>
+      <button class="tab" id="tab-section-2" role="tab" aria-selected="false" aria-controls="panel-section-2" tabindex="-1" type="button">Section 2</button>
+      <button class="tab" id="tab-section-3" role="tab" aria-selected="false" aria-controls="panel-section-3" tabindex="-1" type="button">Section 3</button>
+    </div>
+
+    <main class="panels">
+      <section class="panel" id="panel-link-force" role="tabpanel" aria-labelledby="tab-link-force">
+        <div class="split">
+          <form class="inputs" action="#" onsubmit="return false;">
+            <label>
+              Theta
+              <input type="text" name="theta" value="20" placeholder="degrees from frame, top view" autocomplete="off">
+            </label>
+            <label>
+              Force (Lateral)
+              <input type="text" name="force" placeholder="Force (Unitless)" autocomplete="off">
+            </label>
+            <button type="button">Update</button>
+            <div class="results" aria-label="Results">Results appear here after the calculator is ported.</div>
+          </form>
+          <div class="plot" aria-label="Plot">Plot</div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-section-2" role="tabpanel" aria-labelledby="tab-section-2" hidden>
+        <div class="empty">This section is not built yet.</div>
+      </section>
+
+      <section class="panel" id="panel-section-3" role="tabpanel" aria-labelledby="tab-section-3" hidden>
+        <div class="empty">This section is not built yet.</div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
