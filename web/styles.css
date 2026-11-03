@@ -96,15 +96,13 @@ body {
 }
 
 .panel {
-  height: 100%;
   padding: 1rem;
 }
 
 .split {
   display: flex;
+  align-items: flex-start;
   gap: 1rem;
-  height: 100%;
-  min-height: 28rem;
 }
 
 .inputs {
@@ -186,7 +184,34 @@ body {
   min-height: 8rem;
 }
 
-.plot,
+.results:empty::before {
+  content: "Results appear here after Update";
+}
+
+.results p {
+  margin: 0 0 0.2rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+
+.results strong {
+  display: block;
+  margin: 0 0 1rem;
+  color: var(--ink);
+  font-size: 1.45rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  text-shadow: var(--glow);
+}
+
+.results strong:last-child {
+  margin-bottom: 0;
+}
+
 .empty {
   flex: 1;
   display: grid;
@@ -199,17 +224,73 @@ body {
 }
 
 .plot {
-  box-shadow: inset 0 0 0 1px var(--line);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.6rem 0.7rem 0.7rem;
+  text-transform: none;
+  letter-spacing: 0;
+  text-shadow: none;
 }
 
-@media (max-width: 700px) {
+.plot-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+
+.plot svg {
+  width: 100%;
+  height: min(36rem, calc(100vh - 8rem));
+  text-shadow: none;
+}
+
+.plot-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+
+.plot-key li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.swatch {
+  width: 1.1rem;
+  height: 0.12rem;
+  background: currentColor;
+}
+
+.swatch.frame { background: #ff5c5c; }
+.swatch.axle { background: #39ff14; }
+.swatch.link { background: #c084fc; }
+
+@media (max-aspect-ratio: 1 / 1) {
   .split {
     flex-direction: column;
-    min-height: 0;
   }
 
   .inputs {
     width: auto;
     flex-basis: auto;
+  }
+
+  .plot svg {
+    height: min(30rem, 78vh);
   }
 }

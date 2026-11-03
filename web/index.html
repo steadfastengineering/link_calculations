@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Link Design</title>
+  <title>Toolbox</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="app">
     <header class="app-header">
-      <h1>Link Design</h1>
+      <h1>Toolbox</h1>
     </header>
 
     <div class="tablist" role="tablist" aria-label="Design sections">
@@ -30,10 +30,18 @@
               Force (Lateral)
               <input type="text" name="force" placeholder="Force (Unitless)" autocomplete="off">
             </label>
-            <button type="button">Update</button>
-            <div class="results" aria-label="Results">Results appear here after the calculator is ported.</div>
+            <button id="update-plot" type="button">Update</button>
+            <div class="results" id="results" aria-live="polite"></div>
           </form>
-          <div class="plot" aria-label="Plot">Plot</div>
+          <div class="plot">
+            <p class="plot-title" id="plot-title"></p>
+            <svg id="link-plot" role="img" aria-labelledby="plot-title"></svg>
+            <ul class="plot-key">
+              <li><span class="swatch frame"></span>0° — Frame reference</li>
+              <li><span class="swatch axle"></span>Axle</li>
+              <li><span class="swatch link"></span>Link</li>
+            </ul>
+          </div>
         </div>
       </section>
 
