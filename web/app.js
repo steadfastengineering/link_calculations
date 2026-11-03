@@ -307,3 +307,227 @@ updateButton.addEventListener("click", () => {
 
 window.addEventListener("resize", () => drawPlot(drawnTheta));
 drawPlot(readTheta() ?? 20);
+
+const sagittaPlot = document.getElementById("sagitta-plot");
+const sagittaTitle = document.getElementById("sagitta-plot-title");
+const sagittaRadiusInput = document.getElementById("sagitta-radius");
+const sagittaChordInput = document.getElementById("sagitta-chord");
+const sagittaResults = document.getElementById("sagitta-results");
+const sagittaUpdate = document.getElementById("sagitta-update");
+
+let drawnSagitta = { radius: 10, chord: 8 };
+
+function readSagittaInputs() {
+  const radius = Number(sagittaRadiusInput.value.trim());
+  const chord = Number(sagittaChordInput.value.trim());
+  if (!Number.isFinite(radius) || radius <= 0) {
+    return null;
+  }
+  if (!Number.isFinite(chord) || chord <= 0 || chord > radius * 2) {
+    return null;
+  }
+  return { radius, chord };
+}
+
+function drawSagitta({ radius, chord }) {
+  const half = chord / 2;
+  const sagitta = radius - Math.sqrt(radius * radius - half * half);
+  const margin = Math.max(chord, sagitta) * 0.12;
+  const xMin = -margin;
+  const xMax = sagitta + margin;
+  const yMin = -margin;
+  const yMax = chord + margin;
+  const width = xMax - xMin;
+  const height = yMax - yMin;
+  const point = (x, y) => ({ x: x - xMin, y: yMax - y });
+  const pixelsWide = sagittaPlot.clientWidth || 640;
+  const unit = width / pixelsWide;
+  const fontSize = Math.max(14 * unit, Math.min(width, height) * 0.055);
+
+  sagittaPlot.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  sagittaPlot.replaceChildren();
+
+  for (let x = Math.floor(xMin); x <= Math.ceil(xMax); x += 1) {
+    const from = point(x, yMin);
+    const to = point(x, yMax);
+    sagittaPlot.append(svgEl("line", {
+      x1: from.x, y1: from.y, x2: to.x, y2: to.y,
+      stroke: GRID_COLOR, "stroke-width": 1, "vector-effect": "non-scaling-stroke",
+    }));
+  }
+  for (let y = Math.floor(yMin); y <= Math.ceil(yMax); y += 1) {
+    const from = point(xMin, y);
+    const to = point(xMax, y);
+    sagittaPlot.append(svgEl("line", {
+      x1: from.x, y1: from.y, x2: to.x, y2: to.y,
+      stroke: GRID_COLOR, "stroke-width": 1, "vector-effect": "non-scaling-stroke",
+    }));
+  }
+
+  const center = point(radius, half);
+  sagittaPlot.append(svgEl("circle", {
+    cx: center.x, cy: center.y, r: radius,
+    fill: "none", stroke: "#39ff14", "stroke-width": 2,
+    "vector-effect": "non-scaling-stroke",
+  }));
+
+  const start = point(0, 0);
+  const end = point(0, chord);
+  sagittaPlot.append(svgEl("line", {
+    x1: start.x, y1: start.y, x2: end.x, y2: end.y,
+    stroke: "#ff5c5c", "stroke-width": 2, "vector-effect": "non-scaling-stroke",
+  }));
+
+  const midY = half;
+  const right = point(sagitta, midY);
+  const left = point(0, midY);
+  sagittaPlot.append(svgEl("line", {
+    x1: left.x, y1: left.y, x2: right.x, y2: right.y,
+    stroke: "#c084fc", "stroke-width": 2, "vector-effect": "non-scaling-stroke",
+  }));
+  drawArrow(left, right, 7 * unit, "#c084fc");
+
+  sagittaPlot.append(svgEl("text", {
+    x: right.x + fontSize * 0.2, y: right.y + fontSize * 0.3,
+    fill: "#c084fc", "font-size": fontSize * 1.45, "font-family": "inherit",
+  }, "sagitta"));
+
+  sagittaPlot.append(svgEl("text", {
+    x: center.x + fontSize * 1.6, y: center.y,
+    fill: "#39ff14", "font-size": fontSize * 0.9, "font-family": "inherit", "text-anchor": "middle",
+  }, `R = ${formatLoad(radius)}`));
+
+  sagittaTitle.textContent = `Sagitta | radius = ${formatLoad(radius)}`;
+  drawnSagitta = { radius, chord };
+}
+
+function updateSagitta() {
+  const inputs = readSagittaInputs();
+  if (!inputs) {
+    sagittaResults.replaceChildren();
+    return;
+  }
+  const { radius, chord } = inputs;
+  const sagitta = radius - Math.sqrt(radius * radius - (chord / 2) * (chord / 2));
+  drawSagitta(inputs);
+
+  sagittaResults.replaceChildren();
+  ["Sagitta (arc height)"].forEach((label) => {
+    sagittaResults.append(document.createElement("p"));
+    sagittaResults.lastChild.textContent = label;
+    sagittaResults.append(document.createElement("strong"));
+    sagittaResults.lastChild.textContent = formatLoad(sagitta);
+  });
+}
+
+sagittaUpdate.addEventListener("click", updateSagitta);
+
+drawSagitta(drawnSagitta);
+
+const springInputsContainer = document.getElementById("spring-inputs");
+const springAngleInput = document.getElementById("spring-angle");
+const springUpdateButton = document.getElementById("spring-update");
+const springResults = document.getElementById("spring-results");
+const springPlot = document.getElementById("spring-plot");
+const springPlotTitle = document.getElementById("spring-plot-title");
+
+function getSpringRates() {
+  return Array.from(springInputsContainer.querySelectorAll(".spring-rate"))
+    .map((input) => Number(input.value.trim()))
+    .filter((value) => Number.isFinite(value) && value > 0);
+}
+
+function readAngle() {
+  const value = Number(springAngleInput.value.trim());
+  return Number.isFinite(value) ? value : 0;
+}
+
+function computeSeriesRate(rates) {
+  if (!rates.length) return null;
+  let sum = 0;
+  for (const k of rates) {
+    sum += 1 / k;
+  }
+  return 1 / sum;
+}
+
+function updateSpringRate() {
+  const rates = getSpringRates();
+  const seriesRate = computeSeriesRate(rates);
+  const angle = readAngle();
+  springResults.replaceChildren();
+
+  if (seriesRate === null) {
+    return;
+  }
+
+  const angledRate = seriesRate * Math.cos((angle * Math.PI) / 180);
+
+  [
+    ["Combined spring rate", seriesRate],
+    ["Effective spring rate (angled)", angledRate],
+  ].forEach(([label, value]) => {
+    springResults.append(document.createElement("p"));
+    springResults.lastChild.textContent = label;
+    springResults.append(document.createElement("strong"));
+    springResults.lastChild.textContent = formatLoad(value);
+  });
+}
+
+function drawSpringPlot(angle) {
+  const width = 4;
+  const height = 6;
+  const cx = width / 2;
+  const spring1Top = 0.8;
+  const spring1Bottom = 2.4;
+  const spring2Top = 3.6;
+  const spring2Bottom = 5.2;
+  const vectorLength = 4.8;
+
+  springPlot.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  springPlot.replaceChildren();
+
+  springPlot.append(svgEl("rect", {
+    x: 0.6, y: spring1Top, width: 2.8, height: 1.6,
+    fill: "none", stroke: "#ff5c5c", "stroke-width": 0.12,
+  }));
+
+  springPlot.append(svgEl("rect", {
+    x: 0.6, y: spring2Top, width: 2.8, height: 1.6,
+    fill: "none", stroke: "#39ff14", "stroke-width": 0.12,
+  }));
+
+  const radians = (angle * Math.PI) / 180;
+  const dx = Math.sin(radians) * (vectorLength / 2);
+  const dy = Math.cos(radians) * (vectorLength / 2);
+
+  const vStart = { x: cx - dx, y: 3 - dy };
+  const vEnd = { x: cx + dx, y: 3 + dy };
+
+  springPlot.append(svgEl("line", {
+    x1: vStart.x, y1: vStart.y, x2: vEnd.x, y2: vEnd.y,
+    stroke: "#c084fc", "stroke-width": 0.18,
+  }));
+
+  const arrowSize = 0.25;
+  const angleRad = Math.atan2(vEnd.y - vStart.y, vEnd.x - vStart.x);
+  const arrowX1 = vEnd.x - arrowSize * Math.cos(angleRad - 0.4);
+  const arrowY1 = vEnd.y - arrowSize * Math.sin(angleRad - 0.4);
+  const arrowX2 = vEnd.x - arrowSize * Math.cos(angleRad + 0.4);
+  const arrowY2 = vEnd.y - arrowSize * Math.sin(angleRad + 0.4);
+
+  springPlot.append(svgEl("polygon", {
+    points: `${vEnd.x},${vEnd.y} ${arrowX1},${arrowY1} ${arrowX2},${arrowY2}`,
+    fill: "#c084fc",
+  }));
+
+  springPlotTitle.textContent = `Angle = ${formatAngle(angle)}°`;
+}
+
+springUpdateButton.addEventListener("click", () => {
+  updateSpringRate();
+  const angle = readAngle();
+  drawSpringPlot(angle);
+});
+
+drawSpringPlot(0);
