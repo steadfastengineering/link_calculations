@@ -276,9 +276,9 @@ body {
   background: currentColor;
 }
 
-.swatch.frame { background: #ff5c5c; }
+.swatch.frame { background: #00ffcc; }
 .swatch.axle { background: #39ff14; }
-.swatch.link { background: #c084fc; }
+.swatch.link { background: #00ffff; }
 
 @media (max-aspect-ratio: 1 / 1) {
   .split {

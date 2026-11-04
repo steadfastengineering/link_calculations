@@ -74,27 +74,17 @@ function formatLoad(value) {
 }
 
 function showResults(theta, force) {
-  if (theta === null || force === null) {
-    results.replaceChildren();
-    return;
-  }
+  const isolatedText = (theta === null || force === null || Math.sin((theta * Math.PI) / 180) === 0)
+    ? "0"
+    : formatLoad(force / Math.sin((theta * Math.PI) / 180));
+  const sharedText = (theta === null || force === null || Math.sin((theta * Math.PI) / 180) === 0)
+    ? "0 / 4 = 0"
+    : `${isolatedText} / 4 = ${formatLoad(Number(isolatedText) / 4)}`;
 
-  const sine = Math.sin((theta * Math.PI) / 180);
-  if (sine === 0) {
-    results.textContent = "Single link load is undefined at 0° because sin(theta) is 0.";
-    return;
-  }
-
-  const isolated = force / sine;
-  const shared = isolated / 4;
-  const isolatedText = formatLoad(isolated);
   results.replaceChildren();
   [
     ["Single link load isolated (hypothetical)", isolatedText],
-    [
-      "Single link load in equal angle/length 4-link (realistic)",
-      `${isolatedText} / 4 = ${formatLoad(shared)}`,
-    ],
+    ["Single link load in equal angle/length 4-link (realistic)", sharedText],
   ].forEach(([label, value]) => {
     results.append(document.createElement("p"));
     results.lastChild.textContent = label;
@@ -307,6 +297,7 @@ updateButton.addEventListener("click", () => {
 
 window.addEventListener("resize", () => drawPlot(drawnTheta));
 drawPlot(readTheta() ?? 20);
+showResults(null, null);
 
 const sagittaPlot = document.getElementById("sagitta-plot");
 const sagittaTitle = document.getElementById("sagitta-plot-title");
@@ -405,6 +396,10 @@ function updateSagitta() {
   const inputs = readSagittaInputs();
   if (!inputs) {
     sagittaResults.replaceChildren();
+    sagittaResults.append(document.createElement("p"));
+    sagittaResults.lastChild.textContent = "Sagitta (arc height)";
+    sagittaResults.append(document.createElement("strong"));
+    sagittaResults.lastChild.textContent = "0.00";
     return;
   }
   const { radius, chord } = inputs;
@@ -423,6 +418,11 @@ function updateSagitta() {
 sagittaUpdate.addEventListener("click", updateSagitta);
 
 drawSagitta(drawnSagitta);
+sagittaResults.replaceChildren();
+sagittaResults.append(document.createElement("p"));
+sagittaResults.lastChild.textContent = "Sagitta (arc height)";
+sagittaResults.append(document.createElement("strong"));
+sagittaResults.lastChild.textContent = "0.00";
 
 const springInputsContainer = document.getElementById("spring-inputs");
 const springAngleInput = document.getElementById("spring-angle");
@@ -458,14 +458,24 @@ function updateSpringRate() {
   springResults.replaceChildren();
 
   if (seriesRate === null) {
+    showSpringResultsZero();
     return;
   }
 
-  const angledRate = seriesRate * Math.cos((angle * Math.PI) / 180);
+  const radians = (angle * Math.PI) / 180;
+  const cosTheta = Math.cos(radians);
+  const cosSquared = cosTheta * cosTheta;
+
+  // Axial force for a 1000 lb vertical load (static analysis)
+  const axialForce = 1000 / cosTheta;
+
+  // Effective vertical rate the vehicle feels
+  const effectiveVerticalRate = seriesRate * cosSquared;
 
   [
-    ["Combined spring rate", seriesRate],
-    ["Effective spring rate (angled)", angledRate],
+    ["Combined spring rate (series)", seriesRate],
+    ["Axial force @ 1000 lb vertical load", axialForce],
+    ["Effective vertical rate (vehicle)", effectiveVerticalRate],
   ].forEach(([label, value]) => {
     springResults.append(document.createElement("p"));
     springResults.lastChild.textContent = label;
@@ -474,60 +484,300 @@ function updateSpringRate() {
   });
 }
 
-function drawSpringPlot(angle) {
-  const width = 4;
-  const height = 6;
-  const cx = width / 2;
-  const spring1Top = 0.8;
-  const spring1Bottom = 2.4;
-  const spring2Top = 3.6;
-  const spring2Bottom = 5.2;
-  const vectorLength = 4.8;
-
-  springPlot.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  springPlot.replaceChildren();
-
-  springPlot.append(svgEl("rect", {
-    x: 0.6, y: spring1Top, width: 2.8, height: 1.6,
-    fill: "none", stroke: "#ff5c5c", "stroke-width": 0.12,
-  }));
-
-  springPlot.append(svgEl("rect", {
-    x: 0.6, y: spring2Top, width: 2.8, height: 1.6,
-    fill: "none", stroke: "#39ff14", "stroke-width": 0.12,
-  }));
-
-  const radians = (angle * Math.PI) / 180;
-  const dx = Math.sin(radians) * (vectorLength / 2);
-  const dy = Math.cos(radians) * (vectorLength / 2);
-
-  const vStart = { x: cx - dx, y: 3 - dy };
-  const vEnd = { x: cx + dx, y: 3 + dy };
-
-  springPlot.append(svgEl("line", {
-    x1: vStart.x, y1: vStart.y, x2: vEnd.x, y2: vEnd.y,
-    stroke: "#c084fc", "stroke-width": 0.18,
-  }));
-
-  const arrowSize = 0.25;
-  const angleRad = Math.atan2(vEnd.y - vStart.y, vEnd.x - vStart.x);
-  const arrowX1 = vEnd.x - arrowSize * Math.cos(angleRad - 0.4);
-  const arrowY1 = vEnd.y - arrowSize * Math.sin(angleRad - 0.4);
-  const arrowX2 = vEnd.x - arrowSize * Math.cos(angleRad + 0.4);
-  const arrowY2 = vEnd.y - arrowSize * Math.sin(angleRad + 0.4);
-
-  springPlot.append(svgEl("polygon", {
-    points: `${vEnd.x},${vEnd.y} ${arrowX1},${arrowY1} ${arrowX2},${arrowY2}`,
-    fill: "#c084fc",
-  }));
-
-  springPlotTitle.textContent = `Angle = ${formatAngle(angle)}°`;
+function showSpringResultsZero() {
+  springResults.replaceChildren();
+  [
+    ["Combined spring rate (series)", "0"],
+    ["Axial force @ 1000 lb vertical load", "0"],
+    ["Effective vertical rate (vehicle)", "0"],
+  ].forEach(([label, value]) => {
+    springResults.append(document.createElement("p"));
+    springResults.lastChild.textContent = label;
+    springResults.append(document.createElement("strong"));
+    springResults.lastChild.textContent = value;
+  });
 }
 
-springUpdateButton.addEventListener("click", () => {
-  updateSpringRate();
-  const angle = readAngle();
-  drawSpringPlot(angle);
-});
+function rotatePoint(pt, cx, cy, radians) {
+    const dx = pt.x - cx;
+    const dy = pt.y - cy;
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    return {
+      x: cx + dx * cos - dy * sin,
+      y: cy + dx * sin + dy * cos
+    };
+  }
 
+  function createSpringPoints(cx, topY, bottomY, width, numCoils) {
+    const halfW = width / 2;
+    const left = cx - halfW;
+    const right = cx + halfW;
+    const height = bottomY - topY;
+    const coilH = height / (numCoils * 2);
+    const pts = [];
+    pts.push({ x: left + 0.3, y: topY });
+    pts.push({ x: right - 0.3, y: topY });
+    let y = topY;
+    for (let i = 0; i < numCoils; i++) {
+      y += coilH;
+      pts.push({ x: left, y: y });
+      y += coilH;
+      pts.push({ x: right, y: y });
+    }
+    pts.push({ x: right - 0.3, y: bottomY });
+    pts.push({ x: left + 0.3, y: bottomY });
+    return pts;
+  }
+
+  function drawSpringPlot(angle) {
+    const width = 4;
+    const height = 6;
+    const centerX = 2;
+    const centerY = 3;
+    const radians = (angle * Math.PI) / 180;
+
+    springPlot.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    springPlot.replaceChildren();
+
+    // Spring 1 (top) - taller, nearly touching spring 2
+    const spring1Raw = createSpringPoints(2, 0.85, 2.95, 2.8, 3);
+    const spring1 = spring1Raw.map((p) => rotatePoint(p, centerX, centerY, radians));
+    springPlot.append(svgEl("polyline", {
+      points: spring1.map((p) => `${p.x},${p.y}`).join(" "),
+      fill: "none",
+      stroke: "#00ffcc",
+      "stroke-width": 0.08,
+      "stroke-linejoin": "round",
+      "stroke-linecap": "round",
+    }));
+
+    // Spring 2 (bottom) - taller, nearly touching spring 1
+    const spring2Raw = createSpringPoints(2, 3.05, 5.15, 2.8, 3);
+    const spring2 = spring2Raw.map((p) => rotatePoint(p, centerX, centerY, radians));
+    springPlot.append(svgEl("polyline", {
+      points: spring2.map((p) => `${p.x},${p.y}`).join(" "),
+      fill: "none",
+      stroke: "#39ff14",
+      "stroke-width": 0.08,
+      "stroke-linejoin": "round",
+      "stroke-linecap": "round",
+    }));
+
+    // Vector through center
+    const vectorLength = 4.8;
+    const dx = Math.sin(radians) * (vectorLength / 2);
+    const dy = Math.cos(radians) * (vectorLength / 2);
+    const vStart = rotatePoint({ x: centerX, y: centerY - vectorLength / 2 }, centerX, centerY, radians);
+    const vEnd = rotatePoint({ x: centerX, y: centerY + vectorLength / 2 }, centerX, centerY, radians);
+
+    springPlot.append(svgEl("line", {
+      x1: vStart.x, y1: vStart.y, x2: vEnd.x, y2: vEnd.y,
+      stroke: "#00ffff", "stroke-width": 0.12,
+    }));
+
+    const arrowSize = 0.25;
+    const angleRad = Math.atan2(vEnd.y - vStart.y, vEnd.x - vStart.x);
+    const arrowX1 = vEnd.x - arrowSize * Math.cos(angleRad - 0.4);
+    const arrowY1 = vEnd.y - arrowSize * Math.sin(angleRad - 0.4);
+    const arrowX2 = vEnd.x - arrowSize * Math.cos(angleRad + 0.4);
+    const arrowY2 = vEnd.y - arrowSize * Math.sin(angleRad + 0.4);
+
+    springPlot.append(svgEl("polygon", {
+      points: `${vEnd.x},${vEnd.y} ${arrowX1},${arrowY1} ${arrowX2},${arrowY2}`,
+      fill: "#00ffff",
+    }));
+
+    springPlotTitle.textContent = `Angle = ${formatAngle(angle)}°`;
+  }
+
+springUpdateButton.addEventListener("click", () => {
+    updateSpringRate();
+    const angle = readAngle();
+    drawSpringPlot(angle);
+  });
+
+showSpringResultsZero();
 drawSpringPlot(0);
+
+const cogTrackInput = document.getElementById("cog-track");
+const cogWheelbaseInput = document.getElementById("cog-wheelbase");
+const cogLrInput = document.getElementById("cog-lr");
+const cogRrInput = document.getElementById("cog-rr");
+const cogLfInput = document.getElementById("cog-lf");
+const cogRfInput = document.getElementById("cog-rf");
+const cogUpdateButton = document.getElementById("cog-update");
+const cogResults = document.getElementById("cog-results");
+const cogPlot = document.getElementById("cog-plot");
+const cogPlotTitle = document.getElementById("cog-plot-title");
+
+function readPositive(input) {
+  const value = Number(input.value.trim());
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function readNonNegative(input) {
+  const value = Number(input.value.trim());
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function readCogInputs() {
+  const track = readPositive(cogTrackInput);
+  const wheelbase = readPositive(cogWheelbaseInput);
+  const lr = readNonNegative(cogLrInput);
+  const rr = readNonNegative(cogRrInput);
+  const lf = readNonNegative(cogLfInput);
+  const rf = readNonNegative(cogRfInput);
+  if (track === null || wheelbase === null || lr === null || rr === null || lf === null || rf === null) {
+    return null;
+  }
+  const total = lr + rr + lf + rf;
+  if (total <= 0) {
+    return null;
+  }
+  return { track, wheelbase, lr, rr, lf, rf, total };
+}
+
+function computeCog({ track, wheelbase, lr, rr, lf, rf, total }) {
+  const x = (track * rr + track * rf) / total;
+  const y = (wheelbase * lf + wheelbase * rf) / total;
+  return { x, y };
+}
+
+function showCogResults(cog) {
+  cogResults.replaceChildren();
+  [
+    ["COG X (from left rear)", cog ? formatLoad(cog.x) : "0"],
+    ["COG Y (from left rear)", cog ? formatLoad(cog.y) : "0"],
+  ].forEach(([label, value]) => {
+    cogResults.append(document.createElement("p"));
+    cogResults.lastChild.textContent = label;
+    cogResults.append(document.createElement("strong"));
+    cogResults.lastChild.textContent = value;
+  });
+}
+
+function drawCog(inputs, cog) {
+  const track = inputs ? inputs.track : 60;
+  const wheelbase = inputs ? inputs.wheelbase : 100;
+  const x = cog ? cog.x : track / 2;
+  const y = cog ? cog.y : wheelbase / 2;
+  const margin = Math.max(track, wheelbase) * 0.12;
+  const xMin = -margin;
+  const xMax = track + margin;
+  const yMin = -margin;
+  const yMax = wheelbase + margin;
+  const width = xMax - xMin;
+  const height = yMax - yMin;
+  const point = (px, py) => ({ x: px - xMin, y: yMax - py });
+  const pixelsWide = cogPlot.clientWidth || 640;
+  const unit = width / pixelsWide;
+  const fontSize = Math.max(14 * unit, Math.min(width, height) * 0.045);
+  const tireR = Math.min(track, wheelbase) * 0.035;
+
+  cogPlot.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  cogPlot.replaceChildren();
+
+  for (let gx = Math.floor(xMin); gx <= Math.ceil(xMax); gx += Math.max(1, Math.round(track / 6))) {
+    const from = point(gx, yMin);
+    const to = point(gx, yMax);
+    cogPlot.append(svgEl("line", {
+      x1: from.x, y1: from.y, x2: to.x, y2: to.y,
+      stroke: GRID_COLOR, "stroke-width": 1, "vector-effect": "non-scaling-stroke",
+    }));
+  }
+  for (let gy = Math.floor(yMin); gy <= Math.ceil(yMax); gy += Math.max(1, Math.round(wheelbase / 6))) {
+    const from = point(xMin, gy);
+    const to = point(xMax, gy);
+    cogPlot.append(svgEl("line", {
+      x1: from.x, y1: from.y, x2: to.x, y2: to.y,
+      stroke: GRID_COLOR, "stroke-width": 1, "vector-effect": "non-scaling-stroke",
+    }));
+  }
+
+  const outline = [
+    point(0, 0), point(track, 0), point(track, wheelbase), point(0, wheelbase),
+  ];
+  cogPlot.append(svgEl("polygon", {
+    points: outline.map((p) => `${p.x},${p.y}`).join(" "),
+    fill: "none",
+    stroke: "#14661f",
+    "stroke-width": 1.4,
+    "vector-effect": "non-scaling-stroke",
+  }));
+
+  const midX = point(track / 2, 0);
+  const midXTop = point(track / 2, wheelbase);
+  const midY = point(0, wheelbase / 2);
+  const midYRight = point(track, wheelbase / 2);
+  cogPlot.append(svgEl("line", {
+    x1: midX.x, y1: midX.y, x2: midXTop.x, y2: midXTop.y,
+    stroke: "#00ffff", "stroke-width": 1.2, "stroke-dasharray": "5 4",
+    opacity: "0.45", "vector-effect": "non-scaling-stroke",
+  }));
+  cogPlot.append(svgEl("line", {
+    x1: midY.x, y1: midY.y, x2: midYRight.x, y2: midYRight.y,
+    stroke: "#00ffff", "stroke-width": 1.2, "stroke-dasharray": "5 4",
+    opacity: "0.45", "vector-effect": "non-scaling-stroke",
+  }));
+
+  [
+    [0, 0, "LR"],
+    [track, 0, "RR"],
+    [0, wheelbase, "LF"],
+    [track, wheelbase, "RF"],
+  ].forEach(([tx, ty, label]) => {
+    const p = point(tx, ty);
+    cogPlot.append(svgEl("circle", {
+      cx: p.x, cy: p.y, r: tireR, fill: "#ff5c5c",
+    }));
+    cogPlot.append(svgEl("text", {
+      x: p.x + tireR * 1.4,
+      y: p.y - tireR * 0.6,
+      fill: "#ff5c5c",
+      "font-size": fontSize * 0.75,
+      "font-family": "inherit",
+    }, label));
+  });
+
+  const cogPoint = point(x, y);
+  const arm = tireR * 2.2;
+  cogPlot.append(svgEl("line", {
+    x1: cogPoint.x - arm, y1: cogPoint.y, x2: cogPoint.x + arm, y2: cogPoint.y,
+    stroke: "#39ff14", "stroke-width": 2, "vector-effect": "non-scaling-stroke",
+  }));
+  cogPlot.append(svgEl("line", {
+    x1: cogPoint.x, y1: cogPoint.y - arm, x2: cogPoint.x, y2: cogPoint.y + arm,
+    stroke: "#39ff14", "stroke-width": 2, "vector-effect": "non-scaling-stroke",
+  }));
+  cogPlot.append(svgEl("circle", {
+    cx: cogPoint.x, cy: cogPoint.y, r: tireR * 0.55, fill: "#39ff14",
+  }));
+  cogPlot.append(svgEl("text", {
+    x: cogPoint.x + arm * 1.15,
+    y: cogPoint.y - arm * 0.35,
+    fill: "#39ff14",
+    "font-size": fontSize,
+    "font-family": "inherit",
+  }, "COG"));
+
+  cogPlotTitle.textContent = cog
+    ? `Top view | COG ${formatLoad(x)}, ${formatLoad(y)}`
+    : "Top view | COG";
+}
+
+function updateCog() {
+  const inputs = readCogInputs();
+  if (!inputs) {
+    showCogResults(null);
+    drawCog(null, null);
+    return;
+  }
+  const cog = computeCog(inputs);
+  showCogResults(cog);
+  drawCog(inputs, cog);
+}
+
+cogUpdateButton.addEventListener("click", updateCog);
+showCogResults(null);
+drawCog(null, null);

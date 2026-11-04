@@ -16,6 +16,7 @@
       <button class="tab" id="tab-link-force" role="tab" aria-selected="true" aria-controls="panel-link-force" type="button">Link Force</button>
       <button class="tab" id="tab-section-2" role="tab" aria-selected="false" aria-controls="panel-section-2" tabindex="-1" type="button">Sagitta</button>
       <button class="tab" id="tab-section-3" role="tab" aria-selected="false" aria-controls="panel-section-3" tabindex="-1" type="button">Spring Rate</button>
+      <button class="tab" id="tab-cog" role="tab" aria-selected="false" aria-controls="panel-cog" tabindex="-1" type="button">COG</button>
     </div>
 
     <main class="panels">
@@ -92,6 +93,47 @@
               <li><span class="swatch frame"></span>Spring 1</li>
               <li><span class="swatch axle"></span>Spring 2</li>
               <li><span class="swatch link"></span>Vector</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-cog" role="tabpanel" aria-labelledby="tab-cog" hidden>
+        <div class="split">
+          <form class="inputs" action="#" onsubmit="return false;">
+            <label>
+              Track Width
+              <input type="text" id="cog-track" value="60" placeholder="inches" autocomplete="off">
+            </label>
+            <label>
+              Wheelbase
+              <input type="text" id="cog-wheelbase" value="100" placeholder="inches" autocomplete="off">
+            </label>
+            <label>
+              Left Rear
+              <input type="text" id="cog-lr" value="500" placeholder="lb" autocomplete="off">
+            </label>
+            <label>
+              Right Rear
+              <input type="text" id="cog-rr" value="500" placeholder="lb" autocomplete="off">
+            </label>
+            <label>
+              Left Front
+              <input type="text" id="cog-lf" value="500" placeholder="lb" autocomplete="off">
+            </label>
+            <label>
+              Right Front
+              <input type="text" id="cog-rf" value="500" placeholder="lb" autocomplete="off">
+            </label>
+            <button id="cog-update" type="button">Update</button>
+            <div class="results" id="cog-results" aria-live="polite"></div>
+          </form>
+          <div class="plot">
+            <p class="plot-title" id="cog-plot-title"></p>
+            <svg id="cog-plot" role="img" aria-labelledby="cog-plot-title"></svg>
+            <ul class="plot-key">
+              <li><span class="swatch frame"></span>Tires</li>
+              <li><span class="swatch axle"></span>COG</li>
             </ul>
           </div>
         </div>
