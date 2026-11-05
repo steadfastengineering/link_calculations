@@ -15,6 +15,7 @@ const thetaInput = document.querySelector('input[name="theta"]');
 const forceInput = document.querySelector('input[name="force"]');
 const results = document.getElementById("results");
 const updateButton = document.getElementById("update-plot");
+const linkError = document.getElementById("link-error");
 
 let drawnTheta = 20;
 
@@ -52,34 +53,33 @@ function svgEl(name, attrs, text) {
   return node;
 }
 
-function readTheta() {
-  const value = Number(thetaInput.value.trim());
-  if (!Number.isFinite(value) || value < 0 || value > 90) {
-    return null;
+function readLinkInputs() {
+  const theta = Number(thetaInput.value.trim());
+  const force = Number(forceInput.value.trim());
+  const thetaValid = Number.isFinite(theta) && theta >= 0 && theta <= 90;
+  const forceValid = Number.isFinite(force) && force > 0;
+  if (!thetaValid || !forceValid) {
+    return { valid: false, error: "Invalid input" };
   }
-  return value;
-}
-
-function readForce() {
-  const text = forceInput.value.trim();
-  if (!text) {
-    return null;
-  }
-  const value = Number(text);
-  return Number.isFinite(value) ? value : null;
+  return { valid: true, theta, force };
 }
 
 function formatLoad(value) {
   return String(Number(value.toPrecision(4)));
 }
 
-function showResults(theta, force) {
-  const isolatedText = (theta === null || force === null || Math.sin((theta * Math.PI) / 180) === 0)
-    ? "0"
-    : formatLoad(force / Math.sin((theta * Math.PI) / 180));
-  const sharedText = (theta === null || force === null || Math.sin((theta * Math.PI) / 180) === 0)
-    ? "0 / 4 = 0"
-    : `${isolatedText} / 4 = ${formatLoad(Number(isolatedText) / 4)}`;
+function computeLinkLoads(theta, force) {
+  if (!Number.isFinite(theta) || !Number.isFinite(force) || Math.sin((theta * Math.PI) / 180) === 0) {
+    return { isolated: 0, shared: 0 };
+  }
+  const isolated = force / Math.sin((theta * Math.PI) / 180);
+  return { isolated, shared: isolated / 4 };
+}
+
+function showLinkResults(theta, force) {
+  const loads = computeLinkLoads(theta, force);
+  const isolatedText = formatLoad(loads.isolated);
+  const sharedText = `${isolatedText} / 4 = ${formatLoad(loads.shared)}`;
 
   results.replaceChildren();
   [
@@ -93,7 +93,7 @@ function showResults(theta, force) {
   });
 }
 
-function geometry(theta) {
+function computeLinkGeometry(theta) {
   const meets = theta > 0;
   const frameY = meets
     ? OUTBOARD_Y + (OUTBOARD_X - FRAME_X) / Math.tan((theta * Math.PI) / 180)
@@ -108,8 +108,8 @@ function geometry(theta) {
   };
 }
 
-function drawPlot(theta) {
-  const box = geometry(theta);
+function drawLinkDiagram(theta) {
+  const box = computeLinkGeometry(theta);
   const width = box.xMax - box.xMin;
   const height = box.yTop - box.yBottom;
   const point = (x, y) => ({
@@ -281,23 +281,33 @@ function formatAngle(theta) {
   return String(Number(theta.toFixed(4)));
 }
 
+function showInputError(el, message) {
+  if (el) el.textContent = message;
+}
+
+function clearInputError(el) {
+  if (el) el.textContent = "";
+}
+
 updateButton.addEventListener("click", () => {
-  const theta = readTheta();
-  const force = readForce();
-  if (theta === null || force === null) {
+  const input = readLinkInputs();
+  if (!input.valid) {
     results.replaceChildren();
-    if (theta !== null) {
-      drawPlot(theta);
+    showInputError(linkError, input.error);
+    const thetaFallback = Number(thetaInput.value.trim());
+    if (Number.isFinite(thetaFallback) && thetaFallback >= 0 && thetaFallback <= 90) {
+      drawLinkDiagram(thetaFallback);
     }
     return;
   }
-  drawPlot(theta);
-  showResults(theta, force);
+  clearInputError(linkError);
+  drawLinkDiagram(input.theta);
+  showLinkResults(input.theta, input.force);
 });
 
-window.addEventListener("resize", () => drawPlot(drawnTheta));
-drawPlot(readTheta() ?? 20);
-showResults(null, null);
+window.addEventListener("resize", () => drawLinkDiagram(drawnTheta));
+drawLinkDiagram(Number(thetaInput.value.trim()) || 20);
+showLinkResults(null, null);
 
 const sagittaPlot = document.getElementById("sagitta-plot");
 const sagittaTitle = document.getElementById("sagitta-plot-title");
@@ -305,19 +315,19 @@ const sagittaRadiusInput = document.getElementById("sagitta-radius");
 const sagittaChordInput = document.getElementById("sagitta-chord");
 const sagittaResults = document.getElementById("sagitta-results");
 const sagittaUpdate = document.getElementById("sagitta-update");
+const sagittaError = document.getElementById("sagitta-error");
 
 let drawnSagitta = { radius: 10, chord: 8 };
 
 function readSagittaInputs() {
   const radius = Number(sagittaRadiusInput.value.trim());
   const chord = Number(sagittaChordInput.value.trim());
-  if (!Number.isFinite(radius) || radius <= 0) {
-    return null;
+  const radiusValid = Number.isFinite(radius) && radius > 0 && radius <= 1e6;
+  const chordValid = Number.isFinite(chord) && chord > 0 && chord <= radius * 2;
+  if (!radiusValid || !chordValid) {
+    return { valid: false, error: "Invalid input" };
   }
-  if (!Number.isFinite(chord) || chord <= 0 || chord > radius * 2) {
-    return null;
-  }
-  return { radius, chord };
+  return { valid: true, radius, chord };
 }
 
 function drawSagitta({ radius, chord }) {
@@ -392,19 +402,24 @@ function drawSagitta({ radius, chord }) {
   drawnSagitta = { radius, chord };
 }
 
+function computeSagitta(radius, chord) {
+  return radius - Math.sqrt(radius * radius - (chord / 2) * (chord / 2));
+}
+
 function updateSagitta() {
-  const inputs = readSagittaInputs();
-  if (!inputs) {
+  const input = readSagittaInputs();
+  if (!input.valid) {
     sagittaResults.replaceChildren();
     sagittaResults.append(document.createElement("p"));
     sagittaResults.lastChild.textContent = "Sagitta (arc height)";
     sagittaResults.append(document.createElement("strong"));
     sagittaResults.lastChild.textContent = "0.00";
+    showInputError(sagittaError, input.error);
     return;
   }
-  const { radius, chord } = inputs;
-  const sagitta = radius - Math.sqrt(radius * radius - (chord / 2) * (chord / 2));
-  drawSagitta(inputs);
+  clearInputError(sagittaError);
+  const sagitta = computeSagitta(input.radius, input.chord);
+  drawSagitta({ radius: input.radius, chord: input.chord });
 
   sagittaResults.replaceChildren();
   ["Sagitta (arc height)"].forEach((label) => {
@@ -427,6 +442,7 @@ sagittaResults.lastChild.textContent = "0.00";
 const springInputsContainer = document.getElementById("spring-inputs");
 const springAngleInput = document.getElementById("spring-angle");
 const springUpdateButton = document.getElementById("spring-update");
+const springError = document.getElementById("spring-error");
 const springResults = document.getElementById("spring-results");
 const springPlot = document.getElementById("spring-plot");
 const springPlotTitle = document.getElementById("spring-plot-title");
@@ -439,7 +455,8 @@ function getSpringRates() {
 
 function readAngle() {
   const value = Number(springAngleInput.value.trim());
-  return Number.isFinite(value) ? value : 0;
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(46, value));
 }
 
 function computeSeriesRate(rates) {
@@ -547,7 +564,7 @@ function rotatePoint(pt, cx, cy, radians) {
       points: spring1.map((p) => `${p.x},${p.y}`).join(" "),
       fill: "none",
       stroke: "#00ffcc",
-      "stroke-width": 0.08,
+      "stroke-width": 0.035,
       "stroke-linejoin": "round",
       "stroke-linecap": "round",
     }));
@@ -559,12 +576,12 @@ function rotatePoint(pt, cx, cy, radians) {
       points: spring2.map((p) => `${p.x},${p.y}`).join(" "),
       fill: "none",
       stroke: "#39ff14",
-      "stroke-width": 0.08,
+      "stroke-width": 0.035,
       "stroke-linejoin": "round",
       "stroke-linecap": "round",
     }));
 
-    // Vector through center
+    // Spring axis through center
     const vectorLength = 4.8;
     const dx = Math.sin(radians) * (vectorLength / 2);
     const dy = Math.cos(radians) * (vectorLength / 2);
@@ -573,10 +590,18 @@ function rotatePoint(pt, cx, cy, radians) {
 
     springPlot.append(svgEl("line", {
       x1: vStart.x, y1: vStart.y, x2: vEnd.x, y2: vEnd.y,
-      stroke: "#00ffff", "stroke-width": 0.12,
+      stroke: "#c084fc", "stroke-width": 0.045,
     }));
 
-    const arrowSize = 0.25;
+    const arrowSize = 0.16;
+    springPlot.append(svgEl("text", {
+      x: vEnd.x + 0.12,
+      y: vEnd.y,
+      fill: "#c084fc",
+      "font-size": 0.22,
+      "font-family": "inherit",
+      "dominant-baseline": "middle",
+    }, "SPRING AXIS"));
     const angleRad = Math.atan2(vEnd.y - vStart.y, vEnd.x - vStart.x);
     const arrowX1 = vEnd.x - arrowSize * Math.cos(angleRad - 0.4);
     const arrowY1 = vEnd.y - arrowSize * Math.sin(angleRad - 0.4);
@@ -585,13 +610,20 @@ function rotatePoint(pt, cx, cy, radians) {
 
     springPlot.append(svgEl("polygon", {
       points: `${vEnd.x},${vEnd.y} ${arrowX1},${arrowY1} ${arrowX2},${arrowY2}`,
-      fill: "#00ffff",
+      fill: "#c084fc",
     }));
 
     springPlotTitle.textContent = `Angle = ${formatAngle(angle)}°`;
   }
 
 springUpdateButton.addEventListener("click", () => {
+    const rates = getSpringRates();
+    if (!rates.length) {
+      showInputError(springError, "Invalid input");
+      showSpringResultsZero();
+      return;
+    }
+    clearInputError(springError);
     updateSpringRate();
     const angle = readAngle();
     drawSpringPlot(angle);
@@ -607,27 +639,27 @@ const cogRrInput = document.getElementById("cog-rr");
 const cogLfInput = document.getElementById("cog-lf");
 const cogRfInput = document.getElementById("cog-rf");
 const cogUpdateButton = document.getElementById("cog-update");
+const cogError = document.getElementById("cog-error");
 const cogResults = document.getElementById("cog-results");
 const cogPlot = document.getElementById("cog-plot");
 const cogPlotTitle = document.getElementById("cog-plot-title");
 
-function readPositive(input) {
+function readPositive(input, max = 1e6) {
   const value = Number(input.value.trim());
-  return Number.isFinite(value) && value > 0 ? value : null;
+  return Number.isFinite(value) && value > 0 && value <= max ? value : null;
 }
-
-function readNonNegative(input) {
+function readNonNegative(input, max = 1e6) {
   const value = Number(input.value.trim());
-  return Number.isFinite(value) && value >= 0 ? value : null;
+  return Number.isFinite(value) && value >= 0 && value <= max ? value : null;
 }
 
 function readCogInputs() {
-  const track = readPositive(cogTrackInput);
-  const wheelbase = readPositive(cogWheelbaseInput);
-  const lr = readNonNegative(cogLrInput);
-  const rr = readNonNegative(cogRrInput);
-  const lf = readNonNegative(cogLfInput);
-  const rf = readNonNegative(cogRfInput);
+  const track = readPositive(cogTrackInput, 2000);
+  const wheelbase = readPositive(cogWheelbaseInput, 3000);
+  const lr = readNonNegative(cogLrInput, 20000);
+  const rr = readNonNegative(cogRrInput, 20000);
+  const lf = readNonNegative(cogLfInput, 20000);
+  const rf = readNonNegative(cogRfInput, 20000);
   if (track === null || wheelbase === null || lr === null || rr === null || lf === null || rf === null) {
     return null;
   }
@@ -701,8 +733,8 @@ function drawCog(inputs, cog) {
   cogPlot.append(svgEl("polygon", {
     points: outline.map((p) => `${p.x},${p.y}`).join(" "),
     fill: "none",
-    stroke: "#14661f",
-    "stroke-width": 1.4,
+    stroke: "#00ffff",
+    "stroke-width": 1.6,
     "vector-effect": "non-scaling-stroke",
   }));
 
@@ -712,12 +744,12 @@ function drawCog(inputs, cog) {
   const midYRight = point(track, wheelbase / 2);
   cogPlot.append(svgEl("line", {
     x1: midX.x, y1: midX.y, x2: midXTop.x, y2: midXTop.y,
-    stroke: "#00ffff", "stroke-width": 1.2, "stroke-dasharray": "5 4",
+    stroke: "#00ffff", "stroke-width": 1.4, "stroke-dasharray": "5 4",
     opacity: "0.45", "vector-effect": "non-scaling-stroke",
   }));
   cogPlot.append(svgEl("line", {
     x1: midY.x, y1: midY.y, x2: midYRight.x, y2: midYRight.y,
-    stroke: "#00ffff", "stroke-width": 1.2, "stroke-dasharray": "5 4",
+    stroke: "#00ffff", "stroke-width": 1.4, "stroke-dasharray": "5 4",
     opacity: "0.45", "vector-effect": "non-scaling-stroke",
   }));
 
@@ -771,8 +803,10 @@ function updateCog() {
   if (!inputs) {
     showCogResults(null);
     drawCog(null, null);
+    showInputError(cogError, "Invalid input");
     return;
   }
+  clearInputError(cogError);
   const cog = computeCog(inputs);
   showCogResults(cog);
   drawCog(inputs, cog);
@@ -781,3 +815,461 @@ function updateCog() {
 cogUpdateButton.addEventListener("click", updateCog);
 showCogResults(null);
 drawCog(null, null);
+
+const tireWidthInput = document.getElementById("tire-width");
+const tireAspectInput = document.getElementById("tire-aspect");
+const tireRimInput = document.getElementById("tire-rim");
+const tireUpdateButton = document.getElementById("tire-update");
+const tireError = document.getElementById("tire-error");
+const tireResults = document.getElementById("tire-results");
+const tirePlot = document.getElementById("tire-plot");
+const tirePlotTitle = document.getElementById("tire-plot-title");
+
+function readTireInputs() {
+  const width = Number(tireWidthInput.value.trim());
+  const aspect = Number(tireAspectInput.value.trim());
+  const rim = Number(tireRimInput.value.trim());
+  if (!Number.isFinite(width) || width < 100 || width > 500) return null;
+  if (!Number.isFinite(aspect) || aspect < 20 || aspect > 100) return null;
+  if (!Number.isFinite(rim) || rim < 8 || rim > 24) return null;
+  return { width, aspect, rim };
+}
+
+function computeTire({ width, aspect, rim }) {
+  const stdWidth = width / 25.4;
+  const sidewall = (width * (aspect / 100)) / 25.4;
+  const diameter = 2 * (rim / 2 + sidewall);
+  return { stdWidth, diameter, sidewall, rim };
+}
+
+function showTireResults(t) {
+  tireResults.replaceChildren();
+  if (!t) {
+    ["Metric", "Imperial"].forEach((label) => {
+      tireResults.append(document.createElement("p"));
+      tireResults.lastChild.textContent = label;
+      tireResults.append(document.createElement("strong"));
+      tireResults.lastChild.textContent = "0";
+    });
+    return;
+  }
+  tireResults.append(document.createElement("p"));
+  tireResults.lastChild.textContent = `Metric: ${t.width} ${t.aspect} R${t.rim}`;
+  tireResults.append(document.createElement("strong"));
+  tireResults.lastChild.textContent = `${formatLoad(t.stdWidth)} × ${formatLoad(t.diameter)}`;
+}
+
+function drawTire(t) {
+  const viewH = 140;
+  const margin = viewH * 0.16;
+  const size = viewH;
+  const step = size / 8;
+  const px = (x) => x + margin;
+  const py = (y) => size - (y + margin);
+  const scale = size * 0.034;
+
+  tirePlot.setAttribute("viewBox", `0 0 ${size} ${size}`);
+  tirePlot.replaceChildren();
+
+  for (let gx = 0; gx <= size; gx += step) {
+    tirePlot.append(svgEl("line", {
+      x1: gx, y1: 0, x2: gx, y2: size,
+      stroke: GRID_COLOR, "stroke-width": 0.4, "vector-effect": "non-scaling-stroke",
+    }));
+  }
+  for (let gy = 0; gy <= size; gy += step) {
+    tirePlot.append(svgEl("line", {
+      x1: 0, y1: gy, x2: size, y2: gy,
+      stroke: GRID_COLOR, "stroke-width": 0.4, "vector-effect": "non-scaling-stroke",
+    }));
+  }
+
+  tirePlot.append(svgEl("line", {
+    x1: 0, y1: py(0), x2: size, y2: py(0),
+    stroke: "#14661f", "stroke-width": 0.7,
+  }));
+
+  if (!t) {
+    return;
+  }
+
+  const diameter = t.diameter;
+  const width = t.stdWidth;
+  const scaleDraw = 2.6;
+  const halfH = (diameter / 2) * scaleDraw;
+  const halfW = (width / 2) * scaleDraw;
+  const depth = Math.max(width * 0.55, diameter * 0.18) * scaleDraw;
+  const ground = 8;
+  const cx = size / 2 - 5;
+  const botY = ground;
+  const topY = ground + halfH * 2;
+  const cy = (topY + botY) / 2;
+  const frontX = cx - halfW;
+  const backX = cx + halfW - 4;
+  const rimHalfW = halfW * 0.62;
+  const rimHalfH = (t.rim / 2) * scaleDraw;
+
+  // Far sidewall: clipped ellipse, hidden behind the tire face
+  tirePlot.append(svgEl("path", {
+    d: `M ${px(backX)} ${py(topY)} A ${depth} ${halfH} 0 0 1 ${px(backX)} ${py(botY)}`,
+    fill: "none",
+    stroke: "#00ffff",
+    "stroke-width": 0.7,
+    opacity: "0.55",
+  }));
+
+  // Near sidewall: full ellipse
+  tirePlot.append(svgEl("ellipse", {
+    cx: px(frontX), cy: py(cy),
+    rx: depth * 0.55, ry: halfH,
+    fill: "none",
+    stroke: "#00ffff",
+    "stroke-width": 0.85,
+  }));
+
+  // Equal horizontal top and bottom
+  tirePlot.append(svgEl("line", {
+    x1: px(frontX), y1: py(topY), x2: px(backX), y2: py(topY),
+    stroke: "#00ffff", "stroke-width": 0.8,
+  }));
+  tirePlot.append(svgEl("line", {
+    x1: px(frontX), y1: py(botY), x2: px(backX), y2: py(botY),
+    stroke: "#00ffff", "stroke-width": 0.8,
+  }));
+
+  // Rim on the near face
+  tirePlot.append(svgEl("ellipse", {
+    cx: px(frontX), cy: py(cy),
+    rx: rimHalfW * 0.35, ry: rimHalfH,
+    fill: "none",
+    stroke: "#00ffff", "stroke-width": 0.65,
+  }));
+  tirePlot.append(svgEl("ellipse", {
+    cx: px(frontX), cy: py(cy),
+    rx: rimHalfW * 0.18, ry: rimHalfH * 0.55,
+    fill: "none",
+    stroke: "#00ffff", "stroke-width": 0.55,
+  }));
+
+  // Sparse tread marks centered on the tread band (between the two ellipse arcs)
+  const treadCount = 15;
+  for (let i = 0; i < treadCount; i++) {
+    const y = botY + ((topY - botY) * (i + 0.5)) / treadCount;
+    const span = Math.sqrt(Math.max(0, 1 - Math.pow((y - cy) / halfH, 2)));
+    const nearRight = frontX + depth * 0.55 * span;
+    const farLeft = backX - depth * span;
+    const mid = (nearRight + farLeft) / 2;
+    const treadLen = (farLeft - nearRight) * 0.72;
+    tirePlot.append(svgEl("line", {
+      x1: px(mid - treadLen / 2), y1: py(y), x2: px(mid + treadLen / 2), y2: py(y),
+      stroke: "#39ff14", "stroke-width": 0.45,
+    }));
+  }
+
+  const dimX = px(backX + depth * 0.75) + 8;
+  tirePlot.append(svgEl("line", {
+    x1: dimX, y1: py(topY), x2: dimX, y2: py(botY),
+    stroke: "#00ffcc", "stroke-width": 0.55,
+  }));
+  tirePlot.append(svgEl("text", {
+    x: dimX + 1.6,
+    y: py(cy),
+    fill: "#00ffcc",
+    "font-size": scale * 1.2,
+    "font-family": "inherit",
+    "dominant-baseline": "middle",
+  }, `DIA ${formatLoad(diameter)}″`));
+
+  const dimY = py(topY) - 7;
+  tirePlot.append(svgEl("line", {
+    x1: px(frontX), y1: dimY, x2: px(backX), y2: dimY,
+    stroke: "#00ffcc", "stroke-width": 0.55,
+  }));
+  tirePlot.append(svgEl("text", {
+    x: px((frontX + backX) / 2),
+    y: dimY - 2.4,
+    fill: "#00ffcc",
+    "font-size": scale * 1.15,
+    "font-family": "inherit",
+    "text-anchor": "middle",
+  }, `WIDTH ${formatLoad(t.width)} mm / ${formatLoad(width)}″`));
+}
+
+function updateTire() {
+  const inputs = readTireInputs();
+  if (!inputs) {
+    showTireResults(null);
+    drawTire(null);
+    showInputError(tireError, "Invalid input");
+    return;
+  }
+  clearInputError(tireError);
+  const tire = computeTire(inputs);
+  showTireResults({ ...inputs, ...tire });
+  drawTire({ ...inputs, ...tire });
+}
+
+tireUpdateButton.addEventListener("click", updateTire);
+
+// Render a default tire on first load (same pattern as other tabs)
+{
+  const def = { width: 255, aspect: 85, rim: 16 };
+  const tire = computeTire(def);
+  showTireResults({ ...def, ...tire });
+  drawTire({ ...def, ...tire });
+}
+
+const crawlTrans = document.getElementById("crawl-trans");
+const crawlR1 = document.getElementById("crawl-r1");
+const crawlR2 = document.getElementById("crawl-r2");
+const crawlR3 = document.getElementById("crawl-r3");
+const crawlDiff = document.getElementById("crawl-diff");
+const crawlPortal = document.getElementById("crawl-portal");
+const crawlTorque = document.getElementById("crawl-torque");
+const crawlDiameter = document.getElementById("crawl-diameter");
+const crawlUpdate = document.getElementById("crawl-update");
+const crawlError = document.getElementById("crawl-error");
+const crawlResults = document.getElementById("crawl-results");
+const crawlPlot = document.getElementById("crawl-plot");
+const crawlPlotTitle = document.getElementById("crawl-plot-title");
+
+function readCrawlRatio() {
+  const vals = [
+    crawlTrans, crawlR1, crawlR2, crawlR3, crawlDiff, crawlPortal
+  ].map((el) => {
+    const v = Number(el.value.trim());
+    return Number.isFinite(v) && v > 0 ? v : 1;
+  });
+  return vals;
+}
+
+function readInputTorque() {
+  const v = Number(crawlTorque.value.trim());
+  return Number.isFinite(v) && v > 0 && v <= 2000 ? v : 110;
+}
+function readTireDiameter() {
+  const v = Number(crawlDiameter.value.trim());
+  return Number.isFinite(v) && v >= 20 && v <= 60 ? v : 33;
+}
+
+function computeTireForce(outTorque, diameter) {
+  return outTorque * 24 / diameter;
+}
+
+function computeCrawlRatio(vals) {
+  return vals.reduce((a, b) => a * b, 1);
+}
+
+function computeCrawlData(ratios, inputTorque, diameter) {
+  const ratio = computeCrawlRatio(ratios);
+  const outTorque = inputTorque * ratio;
+  const tireForce = outTorque * 24 / diameter;
+  return { ratio, outTorque, tireForce };
+}
+
+function showCrawlResults(ratio, outTorque, tireForce) {
+  crawlResults.replaceChildren();
+  [
+    ["Crawl Ratio", ratio],
+    ["Output Torque (ft-lbs)", outTorque],
+    ["Tire Force (lbf)", tireForce],
+  ].forEach(([label, value]) => {
+    crawlResults.append(document.createElement("p"));
+    crawlResults.lastChild.textContent = label;
+    crawlResults.append(document.createElement("strong"));
+    crawlResults.lastChild.textContent = formatLoad(value);
+  });
+}
+
+function appendPlotArrow(parent, tip, angle, size, color) {
+  const left = {
+    x: tip.x - size * Math.cos(angle - 0.45),
+    y: tip.y - size * Math.sin(angle - 0.45),
+  };
+  const right = {
+    x: tip.x - size * Math.cos(angle + 0.45),
+    y: tip.y - size * Math.sin(angle + 0.45),
+  };
+  parent.append(svgEl("polygon", {
+    points: `${tip.x},${tip.y} ${left.x},${left.y} ${right.x},${right.y}`,
+    fill: color,
+  }));
+}
+
+function drawCrawlRatioChain(svg, vals) {
+  const viewW = 520;
+  const labels = ["Trans", "R1", "R2", "R3", "Diff", "Portal"];
+  const boxW = 62;
+  const gap = 14;
+  const chainW = labels.length * boxW + (labels.length - 1) * gap;
+  const startX = (viewW - chainW) / 2;
+  const y = 58;
+
+  vals.forEach((v, i) => {
+    const x = startX + i * (boxW + gap);
+    svg.append(svgEl("rect", {
+      x, y: y - 22, width: boxW, height: 44,
+      fill: "none", stroke: "#00ffff", "stroke-width": 1.1,
+    }));
+    svg.append(svgEl("text", {
+      x: x + boxW / 2, y: y - 6,
+      fill: "#00ffcc", "font-size": 12,
+      "font-family": "inherit", "text-anchor": "middle",
+    }, labels[i]));
+    svg.append(svgEl("text", {
+      x: x + boxW / 2, y: y + 12,
+      fill: "#39ff14", "font-size": 13,
+      "font-family": "inherit", "text-anchor": "middle",
+    }, formatLoad(v)));
+
+    if (i < vals.length - 1) {
+      svg.append(svgEl("line", {
+        x1: x + boxW + 2, y1: y, x2: x + boxW + gap - 2, y2: y,
+        stroke: "#00ffff", "stroke-width": 1,
+      }));
+    }
+  });
+}
+
+function drawTireDiagram(svg, outTorque, tireForce) {
+  const cx = 175;
+  const cy = 250;
+  const radius = 88;
+  const groundY = cy + radius;
+
+  svg.append(svgEl("line", {
+    x1: 24, y1: groundY, x2: 496, y2: groundY,
+    stroke: "#14661f", "stroke-width": 1.4,
+  }));
+
+  svg.append(svgEl("circle", {
+    cx, cy, r: radius,
+    fill: "none", stroke: "#00ffff", "stroke-width": 1.6,
+  }));
+  svg.append(svgEl("circle", {
+    cx, cy, r: 3.2, fill: "#00ffcc",
+  }));
+
+  const turns = 1.35;
+  const steps = 72;
+  const r0 = 14;
+  const r1 = 42;
+  const spiral = [];
+  for (let i = 0; i <= steps; i += 1) {
+    const t = i / steps;
+    const angle = -Math.PI / 2 - t * turns * Math.PI * 2;
+    const r = r0 + (r1 - r0) * t;
+    spiral.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
+  }
+  svg.append(svgEl("polyline", {
+    points: spiral.map((p) => `${p.x},${p.y}`).join(" "),
+    fill: "none",
+    stroke: "#00ffcc",
+    "stroke-width": 1.6,
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+  }));
+  const tip = spiral[spiral.length - 1];
+  const prev = spiral[spiral.length - 2];
+  appendPlotArrow(svg, tip, Math.atan2(tip.y - prev.y, tip.x - prev.x), 11, "#00ffcc");
+
+  svg.append(svgEl("text", {
+    x: cx + radius + 22,
+    y: cy - 16,
+    fill: "#00ffcc",
+    "font-size": 15,
+    "font-family": "inherit",
+  }, "OUTPUT TORQUE"));
+  svg.append(svgEl("text", {
+    x: cx + radius + 22,
+    y: cy + 8,
+    fill: "#39ff14",
+    "font-size": 16,
+    "font-family": "inherit",
+  }, `${formatLoad(outTorque)} ft-lbs`));
+
+  const forceEnd = { x: cx + 118, y: groundY };
+  svg.append(svgEl("line", {
+    x1: cx, y1: groundY, x2: forceEnd.x, y2: forceEnd.y,
+    stroke: "#39ff14", "stroke-width": 2.2,
+  }));
+  appendPlotArrow(svg, forceEnd, 0, 12, "#39ff14");
+  svg.append(svgEl("text", {
+    x: forceEnd.x + 14,
+    y: groundY - 8,
+    fill: "#39ff14",
+    "font-size": 15,
+    "font-family": "inherit",
+  }, "TIRE FORCE"));
+  svg.append(svgEl("text", {
+    x: forceEnd.x + 14,
+    y: groundY + 14,
+    fill: "#39ff14",
+    "font-size": 16,
+    "font-family": "inherit",
+  }, `${formatLoad(tireForce)} lbf`));
+}
+
+function drawCrawlDiagram(svg, vals, outTorque, tireForce) {
+  const viewW = 520;
+  const viewH = 420;
+  svg.setAttribute("viewBox", `0 0 ${viewW} ${viewH}`);
+  svg.replaceChildren();
+
+  const step = 40;
+  for (let gx = 0; gx <= viewW; gx += step) {
+    svg.append(svgEl("line", {
+      x1: gx, y1: 0, x2: gx, y2: viewH,
+      stroke: GRID_COLOR, "stroke-width": 1, "vector-effect": "non-scaling-stroke",
+    }));
+  }
+  for (let gy = 0; gy <= viewH; gy += step) {
+    svg.append(svgEl("line", {
+      x1: 0, y1: gy, x2: viewW, y2: gy,
+      stroke: GRID_COLOR, "stroke-width": 1, "vector-effect": "non-scaling-stroke",
+    }));
+  }
+
+  drawCrawlRatioChain(svg, vals);
+  drawTireDiagram(svg, outTorque, tireForce);
+}
+
+function readCrawlInputs() {
+  const ratios = readCrawlRatio();
+  const torque = readInputTorque();
+  const diameter = readTireDiameter();
+
+  const rawTorque = Number(crawlTorque.value.trim());
+  const rawDiameter = Number(crawlDiameter.value.trim());
+
+  const torqueValid = Number.isFinite(rawTorque) && rawTorque > 0 && rawTorque <= 2000;
+  const diameterValid = Number.isFinite(rawDiameter) && rawDiameter >= 20 && rawDiameter <= 60;
+
+  if (!torqueValid || !diameterValid) {
+    return { valid: false, error: "Invalid input" };
+  }
+
+  return { valid: true, ratios, torque, diameter };
+}
+
+function updateCrawl() {
+  const input = readCrawlInputs();
+
+  if (!input.valid) {
+    showInputError(crawlError, input.error);
+    return;
+  }
+
+  clearInputError(crawlError);
+
+  const { ratio, outTorque, tireForce } = computeCrawlData(input.ratios, input.torque, input.diameter);
+
+  showCrawlResults(ratio, outTorque, tireForce);
+  drawCrawlDiagram(crawlPlot, input.ratios, outTorque, tireForce);
+  crawlPlotTitle.textContent = `Crawl ${formatLoad(ratio)} | Torque ${formatLoad(outTorque)} ft-lbs | Force ${formatLoad(tireForce)} lbf`;
+}
+
+crawlUpdate.addEventListener("click", updateCrawl);
+
+// Initial render
+updateCrawl();

@@ -173,15 +173,26 @@ body {
 }
 
 .results,
+.formula-box,
 .empty {
   padding: 0.9rem 1rem;
   color: var(--muted);
   background: #000000;
+  width: 100%;
 }
 
 .results {
   flex: 1;
   min-height: 8rem;
+}
+
+.formula-box {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  white-space: pre-line;
 }
 
 .results:empty::before {
@@ -250,6 +261,22 @@ body {
   text-shadow: none;
 }
 
+.tire-views {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 2rem;
+  flex: 1;
+  min-height: 0;
+  padding: 0.5rem 0;
+}
+
+.tire-views svg {
+  height: 100%;
+  max-height: 24rem;
+  width: 100%;
+}
+
 .plot-key {
   display: flex;
   flex-wrap: wrap;
@@ -278,15 +305,26 @@ body {
 
 .swatch.frame { background: #00ffcc; }
 .swatch.axle { background: #39ff14; }
-.swatch.link { background: #00ffff; }
+.swatch.link { background: #c084fc; }
+
+.input-error {
+  color: #ff8c00;
+  font-size: 0.9rem;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  display: inline-block;
+}
 
 @media (max-aspect-ratio: 1 / 1) {
   .split {
     flex-direction: column;
   }
 
-  .inputs {
-    width: auto;
+  .inputs,
+  .results,
+  .formula-box,
+  .plot {
+    width: 100%;
     flex-basis: auto;
   }
 
