@@ -84,7 +84,7 @@ function showLinkResults(theta, force) {
   results.replaceChildren();
   [
     ["Single link load isolated (hypothetical)", isolatedText],
-    ["Single link load in equal angle/length 4-link (realistic)", sharedText],
+    ["Single link load in equal angle/length 4-link", sharedText],
   ].forEach(([label, value]) => {
     results.append(document.createElement("p"));
     results.lastChild.textContent = label;
